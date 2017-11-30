@@ -1,0 +1,29 @@
+From b103745683ba05c79d3a9f8955cc33448ae892ce Mon Sep 17 00:00:00 2001
+From: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+Date: Thu, 30 Nov 2017 11:08:46 +0100
+Subject: [PATCH] always write pid file
+
+Signed-off-by: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+---
+ src/usr.sbin/ntpd/ntpd.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/usr.sbin/ntpd/ntpd.c b/src/usr.sbin/ntpd/ntpd.c
+index de0d750c..d6ec4750 100644
+--- a/src/usr.sbin/ntpd/ntpd.c
++++ b/src/usr.sbin/ntpd/ntpd.c
+@@ -251,8 +251,10 @@ main(int argc, char *argv[])
+ 				fatal("daemon");
+ 			writepid(&lconf);
+ 		}
+-	} else
++	} else {
+ 		timeout = SETTIME_TIMEOUT * 1000;
++		writepid(&lconf);
++	}
+ 
+ 	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, PF_UNSPEC,
+ 	    pipe_chld) == -1)
+-- 
+2.11.0
+
