@@ -1,0 +1,131 @@
+From f4952171219d2143e8883ee1c2842b4f6cee67f4 Mon Sep 17 00:00:00 2001
+From: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+Date: Thu, 30 Nov 2017 15:30:43 +0100
+Subject: [PATCH] separate daemon and debug parameters
+
+Signed-off-by: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+---
+ src/usr.sbin/ntpd/ntp.c     |  2 +-
+ src/usr.sbin/ntpd/ntp_dns.c |  2 +-
+ src/usr.sbin/ntpd/ntpd.c    | 22 +++++++++++++---------
+ src/usr.sbin/ntpd/ntpd.h    |  1 +
+ 4 files changed, 16 insertions(+), 11 deletions(-)
+
+diff --git a/src/usr.sbin/ntpd/ntp.c b/src/usr.sbin/ntpd/ntp.c
+index 9aa02a75..722d86c3 100644
+--- a/src/usr.sbin/ntpd/ntp.c
++++ b/src/usr.sbin/ntpd/ntp.c
+@@ -97,7 +97,7 @@ ntp_main(struct ntpd_conf *nconf, struct passwd *pw, int argc, char **argv)
+ 
+ 	/* in this case the parent didn't init logging and didn't daemonize */
+ 	if (nconf->settime && !nconf->debug) {
+-		log_init(nconf->debug, LOG_DAEMON);
++		log_init(nconf->debug, LOG_LOCAL3);
+ 		if (setsid() == -1)
+ 			fatal("setsid");
+ 	}
+diff --git a/src/usr.sbin/ntpd/ntp_dns.c b/src/usr.sbin/ntpd/ntp_dns.c
+index c1943243..2ff75c8f 100644
+--- a/src/usr.sbin/ntpd/ntp_dns.c
++++ b/src/usr.sbin/ntpd/ntp_dns.c
+@@ -60,7 +60,7 @@ ntp_dns(struct ntpd_conf *nconf, struct passwd *pw)
+ 
+ 	/* in this case the parent didn't init logging and didn't daemonize */
+ 	if (nconf->settime && !nconf->debug) {
+-		log_init(nconf->debug, LOG_DAEMON);
++	  log_init(nconf->debug, LOG_LOCAL3);
+ 		if (setsid() == -1)
+ 			fatal("setsid");
+ 	}
+diff --git a/src/usr.sbin/ntpd/ntpd.c b/src/usr.sbin/ntpd/ntpd.c
+index d6ec4750..671da372 100644
+--- a/src/usr.sbin/ntpd/ntpd.c
++++ b/src/usr.sbin/ntpd/ntpd.c
+@@ -165,16 +165,20 @@ main(int argc, char *argv[])
+ 	argv0 = argv;
+ #endif
+ 
+-	while ((ch = getopt(argc, argv, "df:np:P:sSv")) != -1) {
++	while ((ch = getopt(argc, argv, "Ddf:np:P:sSv")) != -1) {
+ 		switch (ch) {
+-		case 'd':
++		case 'D':
+ 			lconf.debug = 2;
+ 			break;
++		case 'd':
++		        lconf.nodaemon = 1;
++			break;
+ 		case 'f':
+ 			conffile = optarg;
+ 			break;
+ 		case 'n':
+ 			lconf.debug = 2;
++			lconf.nodaemon = 1;
+ 			lconf.noaction = 1;
+ 			break;
+ 		case 'P':
+@@ -199,7 +203,7 @@ main(int argc, char *argv[])
+ 	}
+ 
+ 	/* log to stderr until daemonized */
+-	log_init(lconf.debug ? lconf.debug : 1, LOG_DAEMON);
++	log_init(lconf.debug ? lconf.debug : 1, LOG_LOCAL3);
+ 
+ 	argc -= optind;
+ 	argv += optind;
+@@ -244,9 +248,9 @@ main(int argc, char *argv[])
+ 
+ 	reset_adjtime();
+ 	if (!lconf.settime) {
+-		log_init(lconf.debug, LOG_DAEMON);
++		log_init(lconf.debug, LOG_LOCAL3);
+ 		log_setverbose(lconf.verbose);
+-		if (!lconf.debug) {
++		if (!lconf.nodaemon) {
+ 			if (daemon(1, 0))
+ 				fatal("daemon");
+ 			writepid(&lconf);
+@@ -323,11 +327,11 @@ main(int argc, char *argv[])
+ 		if (nfds == 0 && lconf.settime) {
+ 			lconf.settime = 0;
+ 			timeout = INFTIM;
+-			log_init(lconf.debug, LOG_DAEMON);
++			log_init(lconf.debug, LOG_LOCAL3);
+ 			log_setverbose(lconf.verbose);
+ 			log_warnx("no reply received in time, skipping initial "
+ 			    "time setting");
+-			if (!lconf.debug) {
++			if (!lconf.nodaemon) {
+ 				if (daemon(1, 0))
+ 					fatal("daemon");
+ 				writepid(&lconf);
+@@ -427,12 +431,12 @@ dispatch_imsg(struct ntpd_conf *lconf, int argc, char **argv)
+ 				fatalx("invalid IMSG_SETTIME received");
+ 			if (!lconf->settime)
+ 				break;
+-			log_init(lconf->debug, LOG_DAEMON);
++			log_init(lconf->debug, LOG_LOCAL3);
+ 			log_setverbose(lconf->verbose);
+ 			memcpy(&d, imsg.data, sizeof(d));
+ 			ntpd_settime(d);
+ 			/* daemonize now */
+-			if (!lconf->debug) {
++			if (!lconf->nodaemon) {
+ 				if (daemon(1, 0))
+ 					fatal("daemon");
+ 				writepid(lconf);
+diff --git a/src/usr.sbin/ntpd/ntpd.h b/src/usr.sbin/ntpd/ntpd.h
+index 39b8e7bf..c3ecb086 100644
+--- a/src/usr.sbin/ntpd/ntpd.h
++++ b/src/usr.sbin/ntpd/ntpd.h
+@@ -242,6 +242,7 @@ struct ntpd_conf {
+ 	struct sockaddr_in				query_addr4;
+ 	struct sockaddr_in6				query_addr6;
+ 	u_int32_t					scale;
++        int                                             nodaemon;
+ 	int				        	debug;
+ 	int				        	verbose;
+ 	u_int8_t					listen_all;
+-- 
+2.11.0
+
