@@ -1,0 +1,28 @@
+From 6628385b98c9991b2d5d0d282a7269414cbac147 Mon Sep 17 00:00:00 2001
+From: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+Date: Thu, 30 Nov 2017 12:47:00 +0100
+Subject: [PATCH] fix polling with constraints
+
+Signed-off-by: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+---
+ src/usr.sbin/ntpd/ntp.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/usr.sbin/ntpd/ntp.c b/src/usr.sbin/ntpd/ntp.c
+index f7a6edec..9aa02a75 100644
+--- a/src/usr.sbin/ntpd/ntp.c
++++ b/src/usr.sbin/ntpd/ntp.c
+@@ -246,8 +246,8 @@ ntp_main(struct ntpd_conf *nconf, struct passwd *pw, int argc, char **argv)
+ 		idx_peers = i;
+ 		sent_cnt = trial_cnt = 0;
+ 		TAILQ_FOREACH(p, &conf->ntp_peers, entry) {
+-			if (constraint_cnt && conf->constraint_median == 0)
+-				continue;
++			/* if (constraint_cnt && conf->constraint_median == 0) */
++			/* 	continue; */
+ 
+ 			if (p->next > 0 && p->next <= getmonotime()) {
+ 				if (p->state > STATE_DNS_INPROGRESS)
+-- 
+2.11.0
+
