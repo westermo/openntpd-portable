@@ -1,0 +1,29 @@
+From cb4c34a14b4069e97fbf61a143f0a26fe8a89dd5 Mon Sep 17 00:00:00 2001
+From: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+Date: Tue, 5 Dec 2017 09:46:42 +0100
+Subject: [PATCH] do not set error interval on recvmsg fail
+
+instead set pathetic interval and give a chance for server to
+come online.
+
+Signed-off-by: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+---
+ src/usr.sbin/ntpd/client.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/usr.sbin/ntpd/client.c b/src/usr.sbin/ntpd/client.c
+index bb5c4f4c..36bb445f 100644
+--- a/src/usr.sbin/ntpd/client.c
++++ b/src/usr.sbin/ntpd/client.c
+@@ -248,7 +248,7 @@ client_dispatch(struct ntp_peer *p, u_int8_t settime)
+ 		    errno == ECONNREFUSED || errno == EADDRNOTAVAIL ||
+ 		    errno == ENOPROTOOPT || errno == ENOENT) {
+ 			client_log_error(p, "recvmsg", errno);
+-			set_next(p, error_interval());
++			set_next(p, scale_interval(INTERVAL_QUERY_PATHETIC));
+ 			return (0);
+ 		} else
+ 			fatal("recvfrom");
+-- 
+2.11.0
+
