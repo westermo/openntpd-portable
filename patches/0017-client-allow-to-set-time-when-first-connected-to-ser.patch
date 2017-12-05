@@ -1,0 +1,58 @@
+From 596c34746031f421daf8951f08f7a17a168bc2e1 Mon Sep 17 00:00:00 2001
+From: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+Date: Mon, 4 Dec 2017 16:03:19 +0100
+Subject: [PATCH] client: allow to set time when first connected to server
+
+If initial time setting failed due to 'server unreachable',
+allow to set time when first server connection succedes. This commit
+resolves bug when adjfreq fails due to failed initial time setting.
+
+Signed-off-by: Volodymyr Bendiuga <volodymyr.bendiuga@westermo.se>
+---
+ src/usr.sbin/ntpd/ntpd.c | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
+
+diff --git a/src/usr.sbin/ntpd/ntpd.c b/src/usr.sbin/ntpd/ntpd.c
+index 671da372..cc9402e3 100644
+--- a/src/usr.sbin/ntpd/ntpd.c
++++ b/src/usr.sbin/ntpd/ntpd.c
+@@ -142,6 +142,7 @@ main(int argc, char *argv[])
+ 	int			argc0 = argc;
+ 	char			**argv0 = argv;
+ 	char			*pname = NULL;
++	static int               warn_once = 1;
+ 
+ 	__progname = get_progname(argv[0]);
+ 
+@@ -325,16 +326,18 @@ main(int argc, char *argv[])
+ 			}
+ 
+ 		if (nfds == 0 && lconf.settime) {
+-			lconf.settime = 0;
+-			timeout = INFTIM;
+-			log_init(lconf.debug, LOG_LOCAL3);
+-			log_setverbose(lconf.verbose);
+-			log_warnx("no reply received in time, skipping initial "
+-			    "time setting");
+-			if (!lconf.nodaemon) {
+-				if (daemon(1, 0))
+-					fatal("daemon");
+-				writepid(&lconf);
++		        if (warn_once) {
++			      warn_once = 0;
++			      timeout = INFTIM;
++			      log_init(lconf.debug, LOG_LOCAL3);
++			      log_setverbose(lconf.verbose);
++			      log_warnx("no reply received in time, skipping initial "
++					"time setting");
++			      if (!lconf.nodaemon) {
++				      if (daemon(1, 0))
++					      fatal("daemon");
++				      writepid(&lconf);
++			      }
+ 			}
+ 		}
+ 
+-- 
+2.11.0
+
