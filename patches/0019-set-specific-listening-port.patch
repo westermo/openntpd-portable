@@ -1,0 +1,85 @@
+Index: openntpd-portable-dev/src/ntpd.c
+===================================================================
+--- openntpd-portable-dev.orig/src/ntpd.c
++++ openntpd-portable-dev/src/ntpd.c
+@@ -109,7 +109,7 @@ usage(void)
+ 		fprintf(stderr,
+ 		    "usage: ntpctl -s all | peers | Sensors | status\n");
+ 	else
+-		fprintf(stderr, "usage: %s [-dnSsv] [-f file] [-p file]\n",
++		fprintf(stderr, "usage: %s [-dnSsv] [-f file] [-p file] [-l listening_port]\n",
+ 		    __progname);
+ 	exit(1);
+ }
+@@ -140,6 +140,7 @@ main(int argc, char *argv[])
+ 	struct passwd		*pw;
+ 	void			*newp;
+ 	int			argc0 = argc;
++	int                     port = -1;
+ 	char			**argv0 = argv;
+ 	char			*pname = NULL;
+ 	static int               warn_once = 1;
+@@ -166,7 +167,7 @@ main(int argc, char *argv[])
+ 	argv0 = argv;
+ #endif
+ 
+-	while ((ch = getopt(argc, argv, "Ddf:np:P:sSv")) != -1) {
++	while ((ch = getopt(argc, argv, "Ddf:l:np:P:sSv")) != -1) {
+ 		switch (ch) {
+ 		case 'D':
+ 			lconf.debug = 2;
+@@ -177,6 +178,9 @@ main(int argc, char *argv[])
+ 		case 'f':
+ 			conffile = optarg;
+ 			break;
++		case 'l':
++			port = atoi(optarg);
++			break;
+ 		case 'n':
+ 			lconf.debug = 2;
+ 			lconf.nodaemon = 1;
+@@ -231,7 +235,7 @@ main(int argc, char *argv[])
+ 			fatalx("sanitize_argv");
+ 
+ 		if (strcmp(NTP_PROC_NAME, pname) == 0)
+-			ntp_main(&lconf, pw, argc0, argv0);
++			ntp_main(&lconf, pw, port, argc0, argv0);
+ 		else if (strcmp(NTPDNS_PROC_NAME, pname) == 0)
+ 			ntp_dns(&lconf, pw);
+ 		else if (strcmp(CONSTRAINT_PROC_NAME, pname) == 0)
+Index: openntpd-portable-dev/src/ntpd.h
+===================================================================
+--- openntpd-portable-dev.orig/src/ntpd.h
++++ openntpd-portable-dev/src/ntpd.h
+@@ -332,7 +332,7 @@ enum ctl_actions {
+ /* prototypes */
+ 
+ /* ntp.c */
+-void	 ntp_main(struct ntpd_conf *, struct passwd *, int, char **);
++void	 ntp_main(struct ntpd_conf *, struct passwd *, int, int, char **);
+ int	 priv_adjtime(void);
+ void	 priv_settime(double);
+ void	 priv_dns(int, char *, u_int32_t);
+Index: openntpd-portable-dev/src/ntp.c
+===================================================================
+--- openntpd-portable-dev.orig/src/ntp.c
++++ openntpd-portable-dev/src/ntp.c
+@@ -67,7 +67,7 @@ ntp_sighdlr(int sig)
+ }
+ 
+ void
+-ntp_main(struct ntpd_conf *nconf, struct passwd *pw, int argc, char **argv)
++ntp_main(struct ntpd_conf *nconf, struct passwd *pw, int port, int argc, char **argv)
+ {
+ 	int			 a, b, nfds, i, j, idx_peers, timeout;
+ 	int			 nullfd, pipe_dns[2], idx_clients;
+@@ -134,7 +134,8 @@ ntp_main(struct ntpd_conf *nconf, struct
+ 	close(nullfd);
+ 
+ 	setproctitle("ntp engine");
+-
++	if (port >= 0)
++		se->s_port = htons(port);
+ 	conf = nconf;
+ 	setup_listeners(se, conf, &listener_cnt);
+ 
