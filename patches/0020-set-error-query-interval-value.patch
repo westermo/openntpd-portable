@@ -1,0 +1,68 @@
+
+diff --git a/src/usr.sbin/ntpd/ntpd.c b/src/usr.sbin/ntpd/ntpd.c
+index: openntpd-portable-dev/src/ntpd.c
+===================================================================
+--- openntpd-portable-dev.orig/src/ntpd.c
++++ openntpd-portable-dev/src/ntpd.c
+@@ -167,7 +167,7 @@ main(int argc, char *argv[])
+ 	argv0 = argv;
+ #endif
+ 
+-	while ((ch = getopt(argc, argv, "Ddf:l:np:P:sSv")) != -1) {
++	while ((ch = getopt(argc, argv, "Ddf:i:l:np:P:sSv")) != -1) {
+ 		switch (ch) {
+ 		case 'D':
+ 			lconf.debug = 2;
+@@ -178,6 +178,9 @@ main(int argc, char *argv[])
+ 		case 'f':
+ 			conffile = optarg;
+ 			break;
++		case 'i':
++			set_error_query_interval(atoi(optarg));
++			break;
+ 		case 'l':
+ 			port = atoi(optarg);
+ 			break;
+diff --git a/src/usr.sbin/ntpd/ntp.c b/src/usr.sbin/ntpd/ntp.c
+index: openntpd-portable-dev/src/ntp.c
+===================================================================
+--- openntpd-portable-dev.orig/src/ntp.c
++++ openntpd-portable-dev/src/ntp.c
+@@ -48,6 +48,7 @@ struct ctl_conns	 ctl_conns;
+ u_int			 peer_cnt;
+ u_int			 sensors_cnt;
+ extern u_int		 constraint_cnt;
++int                      query_interval = INTERVAL_QUERY_PATHETIC * QSCALE_OFF_MAX / QSCALE_OFF_MIN;
+ 
+ void	ntp_sighdlr(int);
+ int	ntp_dispatch_imsg(void);
+@@ -770,7 +771,15 @@ error_interval(void)
+ {
+ 	time_t interval, r;
+ 
+-	interval = INTERVAL_QUERY_PATHETIC * QSCALE_OFF_MAX / QSCALE_OFF_MIN;
++	interval = query_interval;
+ 	r = arc4random_uniform(interval / 10);
+ 	return (interval + r);
+ }
++
++void set_error_query_interval(int value)
++{
++	if(value > 0)
++		query_interval = value;
++	else
++		query_interval = INTERVAL_QUERY_PATHETIC * QSCALE_OFF_MAX / QSCALE_OFF_MIN;
++}
+diff --git a/src/usr.sbin/ntpd/ntpd.h b/src/usr.sbin/ntpd/ntpd.h
+index: openntpd-portable-dev/src/ntpd.h
+===================================================================
+--- openntpd-portable-dev.orig/src/ntpd.h
++++ openntpd-portable-dev/src/ntpd.h
+@@ -340,6 +340,7 @@ int	 offset_compare(const void *, const
+ void	 update_scale(double);
+ time_t	 scale_interval(time_t);
+ time_t	 error_interval(void);
++void     set_error_query_interval(int);
+ extern struct ntpd_conf *conf;
+ extern struct ctl_conns  ctl_conns;
+ 
